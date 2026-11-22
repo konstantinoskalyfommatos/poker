@@ -1,9 +1,8 @@
 import sqlite3
 
-from backend.src.lib.config import STORAGE_PATH
-
-
 class SQLiteHelper:
+    
+    STORAGE_PATH = "/storage"
 
     def __init__(self):
-        self.storage_path = STORAGE_PATH
+        pass
