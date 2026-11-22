@@ -1,0 +1,13 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: "no"
+    env_file: 
+      - .env
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${STORAGE_PATH:-./storage}:/storage
+    working_dir: /home/backend
