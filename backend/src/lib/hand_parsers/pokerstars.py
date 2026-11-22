@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from lib.models import (
+from backend.src.lib.models import (
     SPEC_VERSION,
     Action,
     ActionName,

@@ -1,6 +1,6 @@
 import sqlite3
 
-from lib.config import STORAGE_PATH
+from backend.src.lib.config import STORAGE_PATH
 
 
 class SQLiteHelper:
