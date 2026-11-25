@@ -16,20 +16,28 @@ Follow these conventions when writing or editing Python in this repo:
 # Codebase Structure
 
 ```
-src/lib/                      # all importable code; `src` is the import root
-├── config.py                 # project constants: STORAGE_PATH, HERO (read from the env/.env)
+backend/src/lib/              # all importable code; `backend/src` is the import root
+├── config.py                 # project constants: HERO (read from the env/.env)
 ├── models.py                 # pydantic models of the Open Hand History spec
 ├── sqlite_helper.py          # sqlite storage helper (work in progress)
+├── importer.py               # /storage -> database import script
 └── hand_parsers/
     └── pokerstars.py         # PokerStars text -> HandHistory
+frontend/                     # web UI (placeholder, nothing here yet)
 storage/<hero>/               # raw hand history files, one folder per hero (git-ignored)
-tests/                        # pytest tests, they read real files from storage/
+backend/Dockerfile            # python 3.13 + uv; PYTHONPATH=/home/backend/src
+docker-compose.yaml           # backend service, mounts storage at /storage
 pyproject.toml                # dependencies + pytest config
 .env                          # HERO=<hero name>, read by config.py
 ```
 
-- Imports are absolute from `src`, e.g. `from lib.models import HandHistory`.
 - `models.py` mirrors https://hh-specs.handhistory.org (version in `SPEC_VERSION`). Change it only together with that spec.
-- One parser per site in `src/lib/hand_parsers/`: a class that takes the hero name and offers `parse_file(path) -> list[HandHistory]`. Site specific text handling stays in that module, anything shared goes to `models.py`.
-- `storage/` holds real hand histories and is git-ignored, so tests parse those files instead of inline fixtures.
-- Run the tests with `.venv/bin/python -m pytest tests -q`.
+- One parser per site in `backend/src/lib/hand_parsers/`: a class that takes the hero name and offers `parse_file(path) -> list[HandHistory]`. Site specific text handling stays in that module, anything shared goes to `models.py`.
+- `storage/` holds real hand histories (git-ignored) and is mounted at `/storage`, where `SQLiteHelper` keeps `poker.sqlite`.
+- Use `pysqlite3` (`import pysqlite3 as sqlite3`), not the stdlib `sqlite3`.
+
+# Running code
+
+- **Always run Python in the container**, never with `.venv/bin/python` on the host:
+  `docker compose up -d` then `docker compose exec backend python ...`
+  (imports work there because the image sets `PYTHONPATH=/home/backend/src`).

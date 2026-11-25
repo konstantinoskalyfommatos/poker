@@ -4,6 +4,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from dataclasses import dataclass
 
 from lib.models import (
     SPEC_VERSION,
@@ -93,6 +94,14 @@ ACTION_PATTERNS: tuple[tuple[re.Pattern[str], ActionName], ...] = (
 )
 
 
+@dataclass
+class ParsedFile:
+    hand_histories: HandHistory
+    text: str
+    filesize: int
+    filename: Path
+
+
 class PokerstarsHandParser:
     """Parse PokerStars hand histories into Open Hand History models."""
 
@@ -103,13 +112,21 @@ class PokerstarsHandParser:
             raise ValueError("Please provide the hero name.")
         self.hero = hero
 
-    def parse_file(self, filepath: str | Path) -> list[HandHistory]:
-        """Parse every hand of a PokerStars hand history file.
-        
-        Provide the absolute filepath.
-        """
-        text = Path(filepath).read_text(encoding="utf-8-sig")
-        return [self.parse_hand(block) for block in self.split_hands(text)]
+    def parse_file(
+        self, 
+        filepath: Path,
+    ) -> ParsedFile:
+        """Returns every hand's history, and file's details."""
+        text = filepath.read_text(encoding="utf-8-sig")
+        return ParsedFile(
+            hand_histories=[
+                self.parse_hand(block) 
+                for block in self.split_hands(text)
+            ],
+            text=text,
+            filesize=filepath.stat().st_size,
+            filename=filepath.name
+        )
 
     def parse_hand(self, text: str) -> HandHistory:
         """Parse the text of a single hand."""
