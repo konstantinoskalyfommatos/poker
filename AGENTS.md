@@ -17,22 +17,24 @@ Follow these conventions when writing or editing Python in this repo:
 
 ```
 backend/src/lib/              # all importable code; `backend/src` is the import root
-├── config.py                 # project constants: HERO (read from the env/.env)
+├── config.py                 # SITE_TO_HERO_MAP: one hero nickname per site (HERO_<SITE> env vars)
 ├── models.py                 # pydantic models of the Open Hand History spec
 ├── sqlite_helper.py          # sqlite storage helper (work in progress)
-├── importer.py               # /storage -> database import script
+├── sync.py                   # /storage -> database import script
 └── hand_parsers/
-    └── pokerstars.py         # PokerStars text -> HandHistory
+    ├── __init__.py           # SITE_TO_PARSER_MAP: site name -> parser class registry
+    ├── parent_hand_parser.py # abstract parent; shared parsing flow and helpers
+    └── pokerstars.py         # PokerStars site constants + split_hands
 frontend/                     # web UI (placeholder, nothing here yet)
-storage/<hero>/               # raw hand history files, one folder per hero (git-ignored)
+storage/<site>/               # raw hand history files, one folder per site (git-ignored)
 backend/Dockerfile            # python 3.13 + uv; PYTHONPATH=/home/backend/src
 docker-compose.yaml           # backend service, mounts storage at /storage
 pyproject.toml                # dependencies + pytest config
-.env                          # HERO=<hero name>, read by config.py
+.env                          # e.g. HERO_POKERSTARS=<hero name>, read by config.py
 ```
 
 - `models.py` mirrors https://hh-specs.handhistory.org (version in `SPEC_VERSION`). Change it only together with that spec.
-- One parser per site in `backend/src/lib/hand_parsers/`: a class that takes the hero name and offers `parse_file(path) -> list[HandHistory]`. Site specific text handling stays in that module, anything shared goes to `models.py`.
+- One parser per site in `backend/src/lib/hand_parsers/`: a `ParentHandParser` subclass that provides the site's regexes/constants and `split_hands`; register it in `hand_parsers/__init__.py`'s `SITE_TO_PARSER_MAP` under the same key as its `HERO_<SITE>` env var and `storage/` folder. Site specific text handling stays in that module, anything shared goes to `parent_hand_parser.py` or `models.py`.
 - `storage/` holds real hand histories (git-ignored) and is mounted at `/storage`, where `SQLiteHelper` keeps `poker.sqlite`.
 - Use `pysqlite3` (`import pysqlite3 as sqlite3`), not the stdlib `sqlite3`.
 
