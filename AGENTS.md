@@ -16,20 +16,30 @@ Follow these conventions when writing or editing Python in this repo:
 # Codebase Structure
 
 ```
-src/lib/                      # all importable code; `src` is the import root
-├── config.py                 # project constants: STORAGE_PATH, HERO (read from the env/.env)
+backend/src/lib/              # all importable code; `backend/src` is the import root
+├── config.py                 # SITE_TO_HERO_MAP: one hero nickname per site (HERO_<SITE> env vars)
 ├── models.py                 # pydantic models of the Open Hand History spec
 ├── sqlite_helper.py          # sqlite storage helper (work in progress)
+├── sync.py                   # /storage -> database import script
 └── hand_parsers/
-    └── pokerstars.py         # PokerStars text -> HandHistory
-storage/<hero>/               # raw hand history files, one folder per hero (git-ignored)
-tests/                        # pytest tests, they read real files from storage/
+    ├── __init__.py           # SITE_TO_PARSER_MAP: site name -> parser class registry
+    ├── parent_hand_parser.py # abstract parent; shared parsing flow and helpers
+    └── pokerstars.py         # PokerStars site constants + split_hands
+frontend/                     # web UI (placeholder, nothing here yet)
+storage/<site>/               # raw hand history files, one folder per site (git-ignored)
+backend/Dockerfile            # python 3.13 + uv; PYTHONPATH=/home/backend/src
+docker-compose.yaml           # backend service, mounts storage at /storage
 pyproject.toml                # dependencies + pytest config
-.env                          # HERO=<hero name>, read by config.py
+.env                          # e.g. HERO_POKERSTARS=<hero name>, read by config.py
 ```
 
-- Imports are absolute from `src`, e.g. `from lib.models import HandHistory`.
 - `models.py` mirrors https://hh-specs.handhistory.org (version in `SPEC_VERSION`). Change it only together with that spec.
-- One parser per site in `src/lib/hand_parsers/`: a class that takes the hero name and offers `parse_file(path) -> list[HandHistory]`. Site specific text handling stays in that module, anything shared goes to `models.py`.
-- `storage/` holds real hand histories and is git-ignored, so tests parse those files instead of inline fixtures.
-- Run the tests with `.venv/bin/python -m pytest tests -q`.
+- One parser per site in `backend/src/lib/hand_parsers/`: a `ParentHandParser` subclass that provides the site's regexes/constants and `split_hands`; register it in `hand_parsers/__init__.py`'s `SITE_TO_PARSER_MAP` under the same key as its `HERO_<SITE>` env var and `storage/` folder. Site specific text handling stays in that module, anything shared goes to `parent_hand_parser.py` or `models.py`.
+- `storage/` holds real hand histories (git-ignored) and is mounted at `/storage`, where `SQLiteHelper` keeps `poker.sqlite`.
+- Use `pysqlite3` (`import pysqlite3 as sqlite3`), not the stdlib `sqlite3`.
+
+# Running code
+
+- **Always run Python in the container**, never with `.venv/bin/python` on the host:
+  `docker compose up -d` then `docker compose exec backend python ...`
+  (imports work there because the image sets `PYTHONPATH=/home/backend/src`).

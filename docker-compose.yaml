@@ -9,5 +9,6 @@ services:
     stdin_open: true
     tty: true
     volumes:
+      - ./backend/src:/home/backend/src
       - ${STORAGE_PATH:-./storage}:/storage
     working_dir: /home/backend
